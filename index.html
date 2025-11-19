@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Anyway.MBTI - 呆萌乐园 (修复版)</title>
+    <title>Anyway.MBTI Zoo</title>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Quicksand:wght@700&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@700&display=swap");
 
       :root {
         --bg-color: #fffdf5;
@@ -19,74 +19,57 @@
         font-family: "Quicksand", "Microsoft YaHei", sans-serif;
         overflow: hidden;
         user-select: none;
-        cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="%23FF8888" stroke-width="2"/></svg>'),
+        /* 这是一个可爱的空心圆圈鼠标指针 */
+        cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="%23FF8888" stroke-width="2"/></svg>')
+            12 12,
           auto;
       }
 
-      .header {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1000;
-        text-align: center;
-        pointer-events: none;
-      }
-      h1 {
-        font-family: "Zcool KuaiLe", cursive;
-        font-size: 3rem;
-        color: #333;
-        margin: 0;
-        text-shadow: 2px 2px 0px #ffd166;
-      }
-      p {
-        color: #888;
-        font-size: 1.1rem;
-        background: rgba(255, 255, 255, 0.8);
-        padding: 5px 15px;
-        border-radius: 20px;
-      }
+      /* 隐藏原有的 Header，什么都不留 */
 
-      /* === 核心容器：只负责位移，不负责翻转 === */
+      /* === 核心容器 === */
       .critter {
         position: absolute;
         width: 60px;
         height: 60px;
-        /* 这里的 transform 只有 translate */
         will-change: transform;
-        cursor: pointer;
         z-index: 10;
+        /* 扩大一点点击区域，更好抓 */
+        padding: 20px;
+        margin: -20px;
       }
 
-      /* === 视觉包裹层：负责翻转身体 === */
+      /* === 视觉包裹层 (负责左右翻转) === */
       .visual-wrapper {
-        width: 100%;
-        height: 100%;
+        width: 60px;
+        height: 60px;
         position: relative;
-        transition: transform 0.2s; /* 转身有个平滑过渡 */
+        transition: transform 0.2s;
+        /* 修正 pointer-events 以便父级能捕获hover */
+        pointer-events: auto;
       }
 
-      /* 向右看时的样式 (默认向左，不用写) */
       .facing-right {
         transform: scaleX(-1);
       }
 
-      /* 身体样式 */
+      /* === 身体 (负责上下浮动 & 颜色) === */
       .body {
         width: 100%;
         height: 100%;
-        border-radius: 40% 40% 45% 45%;
+        border-radius: 45% 45% 40% 40%; /* 稍微圆一点 */
         display: flex;
         justify-content: center;
         align-items: center;
         position: relative;
-        box-shadow: inset -3px -3px 10px rgba(0, 0, 0, 0.1),
-          0 5px 15px rgba(0, 0, 0, 0.1);
-        transition: transform 0.1s;
-        z-index: 2; /* 保证身体盖住腿 */
+        /* 默认阴影 */
+        box-shadow: inset -3px -3px 10px rgba(0, 0, 0, 0.05),
+          0 5px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性过渡 */
+        z-index: 2;
       }
 
-      /* 走路动画 */
+      /* 走路时的颠簸动画 */
       .critter.walking .body {
         animation: bob 0.6s infinite alternate ease-in-out;
       }
@@ -95,35 +78,40 @@
           transform: translateY(0);
         }
         100% {
-          transform: translateY(-5px);
+          transform: translateY(-6px);
         }
       }
 
+      /* 表情文字 */
       .face {
-        font-size: 18px;
-        color: rgba(0, 0, 0, 0.6);
+        font-size: 16px;
+        color: rgba(60, 60, 60, 0.7);
         font-weight: bold;
         pointer-events: none;
+        transition: transform 0.1s;
       }
 
-      /* 腿 */
+      /* === 腿部系统 === */
       .legs {
         position: absolute;
-        bottom: -8px;
+        bottom: -6px;
         width: 100%;
         height: 15px;
         display: flex;
         justify-content: center;
-        gap: 15px;
+        gap: 12px;
         z-index: 1;
+        pointer-events: none;
       }
       .leg {
         width: 6px;
-        height: 12px;
+        height: 10px;
         background: rgba(0, 0, 0, 0.2);
         border-radius: 4px;
+        transition: all 0.2s;
       }
 
+      /* 走路腿动 */
       .critter.walking .leg:nth-child(1) {
         animation: walk-l 0.4s infinite alternate;
       }
@@ -148,92 +136,122 @@
         }
       }
 
-      /* === 气泡：独立于翻转层之外 === */
-      .info-bubble {
-        position: absolute;
-        bottom: 75px;
-        left: 50%;
-        /* 关键：不管身体怎么转，气泡永远只是位移，不翻转 */
-        transform: translateX(-50%) scale(0);
-        transform-origin: bottom center;
-        background: #333;
-        color: #fff;
-        padding: 8px 12px;
-        border-radius: 12px;
-        font-size: 14px;
-        white-space: nowrap;
-        opacity: 0;
-        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        pointer-events: none;
-        z-index: 99;
+      /* === ✨ HOVER 特效：拎起来！ ✨ === */
+
+      .critter:hover {
+        z-index: 999;
+        cursor: grab;
       }
 
+      /* 1. 身体上浮，阴影变远 */
+      .critter:hover .body {
+        animation: none; /* 停止走路颠簸 */
+        transform: translateY(-20px) scale(1.05); /* 向上提 */
+        box-shadow: 0 30px 30px rgba(0, 0, 0, 0.15); /* 阴影拉长 */
+        filter: brightness(1.05); /* 稍微变亮 */
+      }
+
+      /* 2. 腿变长并乱蹬 (悬空感) */
+      .critter:hover .leg {
+        animation: none;
+        height: 22px; /* 腿被重力拉长 */
+        width: 4px;
+        animation: panic-legs 0.1s infinite alternate; /* 快速抖动 */
+      }
+      /* 乱蹬动画 */
+      @keyframes panic-legs {
+        from {
+          transform: rotate(-15deg);
+        }
+        to {
+          transform: rotate(15deg);
+        }
+      }
+      .critter:hover .leg:nth-child(2) {
+        animation-delay: 0.05s;
+      }
+
+      /* 3. 气泡显示 */
+      .info-bubble {
+        position: absolute;
+        bottom: 90px; /* 气泡位置也稍微高一点 */
+        left: 50%;
+        transform: translateX(-50%) scale(0);
+        background: rgba(50, 50, 50, 0.9);
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        white-space: nowrap;
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        pointer-events: none;
+        z-index: 99;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
       .info-bubble::after {
         content: "";
         position: absolute;
-        bottom: -5px;
+        bottom: -4px;
         left: 50%;
-        margin-left: -5px;
-        border-width: 5px 5px 0;
+        margin-left: -4px;
+        border-width: 4px 4px 0;
         border-style: solid;
-        border-color: #333 transparent transparent transparent;
+        border-color: rgba(50, 50, 50, 0.9) transparent transparent transparent;
       }
-
-      .name {
-        font-weight: bold;
-        display: block;
-        margin-bottom: 2px;
-      }
-      .mbti {
-        font-size: 10px;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 2px 4px;
-        border-radius: 4px;
-        letter-spacing: 1px;
-      }
-
-      /* === 交互 === */
-      .critter:hover {
-        z-index: 100;
-      }
-      .critter:hover .visual-wrapper {
-        transform: scale(1.2) !important; /* 鼠标放上去变大，且保持方向 */
-      }
-      .critter:hover .body {
-        animation: none;
-      } /* 停止抖动 */
       .critter:hover .info-bubble {
         transform: translateX(-50%) scale(1);
         opacity: 1;
       }
 
+      .name-row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .name {
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .mbti-tag {
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+
       /* 形状变体 */
       .shape-triangle .body {
-        border-radius: 10px;
+        border-radius: 15px;
         clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-        height: 70px;
+        height: 65px;
         width: 70px;
       }
       .shape-triangle .face {
-        margin-top: 20px;
+        margin-top: 15px;
+      }
+      .shape-square .body {
+        border-radius: 12px;
       }
 
+      /* 地面线 */
       .floor-line {
         position: absolute;
         bottom: 0;
         width: 100%;
-        height: 10px;
-        background-image: linear-gradient(to right, #ddd 50%, transparent 50%);
-        background-size: 40px 100%;
-        opacity: 0.5;
+        height: 8px;
+        background: repeating-linear-gradient(
+          to right,
+          #e0e0e0 0,
+          #e0e0e0 10px,
+          transparent 10px,
+          transparent 20px
+        );
+        opacity: 0.6;
       }
     </style>
   </head>
   <body>
-    <div class="header">
-      <h1>Anyway.Zoo</h1>
-      <p>名字已经修好啦，不会反着写了！</p>
-    </div>
     <div id="zoo-container"></div>
     <div class="floor-line"></div>
 
@@ -254,36 +272,31 @@
         { name: "W", type: "ESTJ", color: "#FFDAC1", shape: "triangle" },
         { name: "小丑", type: "ESTP", color: "#FFDAC1", shape: "circle" },
         { name: "采辰", type: "ESTP", color: "#FFDAC1", shape: "circle" },
+        { name: "Lina", type: "ENFP", color: "#FFB7B2", shape: "circle" },
+        { name: "Chris", type: "INFP", color: "#C7CEEA", shape: "circle" },
       ];
 
-      const faces = [
-        "• ‿ •",
-        "ovo",
-        ">_<",
-        "¬_¬",
-        "^o^",
-        "UwU",
-        "O_O",
-        "$_$",
-        "=.=",
-        "◕‿◕",
-      ];
+      // 普通状态的表情
+      const normalFaces = ["• ‿ •", "ovo", "¬_¬", "•_•", "^.^", "=.="];
+      // 被抓起来时的表情 (惊讶/害羞)
+      const panicFaces = [">///<", "O_O", "QAQ", ">3<", "⊙﹏⊙", "OwO", "!!"];
+
       const container = document.getElementById("zoo-container");
 
       class Critter {
         constructor(data) {
           this.data = data;
           this.element = null;
-          this.wrapper = null; // 新增：视觉包装层
+          this.wrapper = null;
+          this.faceElement = null;
+          this.originalFace = "";
 
           this.x = Math.random() * (window.innerWidth - 80);
           this.y = Math.random() * (window.innerHeight - 150) + 50;
 
-          // 速度和方向
-          this.speed = 0.5 + Math.random() * 1.5;
+          this.speed = 0.4 + Math.random() * 1.2; // 速度稍微慢一点，显呆
           this.dx = (Math.random() - 0.5) * this.speed;
           this.dy = (Math.random() - 0.5) * this.speed;
-          this.direction = this.dx > 0 ? 1 : -1;
 
           this.isHovered = false;
           this.init();
@@ -294,18 +307,22 @@
           this.element.className = "critter walking";
           if (this.data.shape === "triangle")
             this.element.classList.add("shape-triangle");
+          if (this.data.shape === "square")
+            this.element.classList.add("shape-square");
 
-          const randomFace = faces[Math.floor(Math.random() * faces.length)];
+          this.originalFace =
+            normalFaces[Math.floor(Math.random() * normalFaces.length)];
 
-          // 结构变更：气泡在外，身体在 visual-wrapper 内
           this.element.innerHTML = `
                     <div class="info-bubble">
-                        <span class="name">${this.data.name}</span>
-                        <span class="mbti">${this.data.type}</span>
+                        <div class="name-row">
+                            <span class="name">${this.data.name}</span>
+                            <span class="mbti-tag">${this.data.type}</span>
+                        </div>
                     </div>
                     <div class="visual-wrapper">
                         <div class="body" style="background-color: ${this.data.color};">
-                            <div class="face">${randomFace}</div>
+                            <div class="face">${this.originalFace}</div>
                         </div>
                         <div class="legs">
                             <div class="leg"></div>
@@ -316,54 +333,62 @@
 
           container.appendChild(this.element);
           this.wrapper = this.element.querySelector(".visual-wrapper");
+          this.faceElement = this.element.querySelector(".face");
 
-          // 交互
+          // === 交互逻辑 ===
           this.element.addEventListener("mouseenter", () => {
             this.isHovered = true;
+            // 1. 随机换一个“惊慌”表情
+            const panicFace =
+              panicFaces[Math.floor(Math.random() * panicFaces.length)];
+            this.faceElement.innerText = panicFace;
           });
+
           this.element.addEventListener("mouseleave", () => {
             this.isHovered = false;
+            // 2. 恢复原来的淡定表情
+            this.faceElement.innerText = this.originalFace;
+
+            // 3. 被放下后，换个方向跑 (假装受惊逃跑)
             this.dx = (Math.random() - 0.5) * 3;
             this.dy = (Math.random() - 0.5) * 3;
           });
         }
 
         update() {
-          if (this.isHovered) return;
+          if (this.isHovered) return; // 被抓住时，位置不动
 
           this.x += this.dx;
           this.y += this.dy;
 
-          // 碰壁检测
-          if (this.x <= 0 || this.x >= window.innerWidth - 60) {
+          // 边界反弹
+          if (this.x <= 20 || this.x >= window.innerWidth - 80) {
             this.dx *= -1;
           }
-          if (this.y <= 50 || this.y >= window.innerHeight - 80) {
+          if (this.y <= 20 || this.y >= window.innerHeight - 80) {
             this.dy *= -1;
           }
 
-          // 随机转向
-          if (Math.random() < 0.01) {
-            this.dx = (Math.random() - 0.5) * 2;
-            this.dy = (Math.random() - 0.5) * 2;
+          // 偶尔发呆转向
+          if (Math.random() < 0.005) {
+            this.dx = (Math.random() - 0.5) * 1.5;
+            this.dy = (Math.random() - 0.5) * 1.5;
           }
 
-          // 更新位置 (只移动容器)
+          // 移动
           this.element.style.transform = `translate(${this.x}px, ${this.y}px)`;
 
-          // 更新朝向 (只翻转 wrapper)
+          // 转向 (控制内部wrapper)
           if (this.dx > 0) {
-            // 向右走，添加 class 翻转
             this.wrapper.classList.add("facing-right");
           } else {
-            // 向左走，移除 class (默认就是向左)
             this.wrapper.classList.remove("facing-right");
           }
         }
       }
 
       // 初始化
-      const population = [...characters, ...characters];
+      const population = [...characters, ...characters]; // 复制一份让屏幕更热闹
       const critters = [];
       population.forEach((data) => critters.push(new Critter(data)));
 
