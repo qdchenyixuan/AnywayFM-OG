@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anyway.MBTI - 呆萌乐园 (修复版)</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Quicksand:wght@700&display=swap");
+
+      :root {
+        --bg-color: #fffdf5;
+      }
+
+      body {
+        margin: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: var(--bg-color);
+        font-family: "Quicksand", "Microsoft YaHei", sans-serif;
+        overflow: hidden;
+        user-select: none;
+        cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="%23FF8888" stroke-width="2"/></svg>'),
+          auto;
+      }
+
+      .header {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        text-align: center;
+        pointer-events: none;
+      }
+      h1 {
+        font-family: "Zcool KuaiLe", cursive;
+        font-size: 3rem;
+        color: #333;
+        margin: 0;
+        text-shadow: 2px 2px 0px #ffd166;
+      }
+      p {
+        color: #888;
+        font-size: 1.1rem;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 5px 15px;
+        border-radius: 20px;
+      }
+
+      /* === 核心容器：只负责位移，不负责翻转 === */
+      .critter {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        /* 这里的 transform 只有 translate */
+        will-change: transform;
+        cursor: pointer;
+        z-index: 10;
+      }
+
+      /* === 视觉包裹层：负责翻转身体 === */
+      .visual-wrapper {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        transition: transform 0.2s; /* 转身有个平滑过渡 */
+      }
+
+      /* 向右看时的样式 (默认向左，不用写) */
+      .facing-right {
+        transform: scaleX(-1);
+      }
+
+      /* 身体样式 */
+      .body {
+        width: 100%;
+        height: 100%;
+        border-radius: 40% 40% 45% 45%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        box-shadow: inset -3px -3px 10px rgba(0, 0, 0, 0.1),
+          0 5px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.1s;
+        z-index: 2; /* 保证身体盖住腿 */
+      }
+
+      /* 走路动画 */
+      .critter.walking .body {
+        animation: bob 0.6s infinite alternate ease-in-out;
+      }
+      @keyframes bob {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(-5px);
+        }
+      }
+
+      .face {
+        font-size: 18px;
+        color: rgba(0, 0, 0, 0.6);
+        font-weight: bold;
+        pointer-events: none;
+      }
+
+      /* 腿 */
+      .legs {
+        position: absolute;
+        bottom: -8px;
+        width: 100%;
+        height: 15px;
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        z-index: 1;
+      }
+      .leg {
+        width: 6px;
+        height: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+      }
+
+      .critter.walking .leg:nth-child(1) {
+        animation: walk-l 0.4s infinite alternate;
+      }
+      .critter.walking .leg:nth-child(2) {
+        animation: walk-r 0.4s infinite alternate;
+        animation-delay: 0.2s;
+      }
+      @keyframes walk-l {
+        from {
+          transform: rotate(-20deg) translateY(0);
+        }
+        to {
+          transform: rotate(20deg) translateY(-3px);
+        }
+      }
+      @keyframes walk-r {
+        from {
+          transform: rotate(20deg) translateY(-3px);
+        }
+        to {
+          transform: rotate(-20deg) translateY(0);
+        }
+      }
+
+      /* === 气泡：独立于翻转层之外 === */
+      .info-bubble {
+        position: absolute;
+        bottom: 75px;
+        left: 50%;
+        /* 关键：不管身体怎么转，气泡永远只是位移，不翻转 */
+        transform: translateX(-50%) scale(0);
+        transform-origin: bottom center;
+        background: #333;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        white-space: nowrap;
+        opacity: 0;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        pointer-events: none;
+        z-index: 99;
+      }
+
+      .info-bubble::after {
+        content: "";
+        position: absolute;
+        bottom: -5px;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px 5px 0;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+      }
+
+      .name {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .mbti {
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 2px 4px;
+        border-radius: 4px;
+        letter-spacing: 1px;
+      }
+
+      /* === 交互 === */
+      .critter:hover {
+        z-index: 100;
+      }
+      .critter:hover .visual-wrapper {
+        transform: scale(1.2) !important; /* 鼠标放上去变大，且保持方向 */
+      }
+      .critter:hover .body {
+        animation: none;
+      } /* 停止抖动 */
+      .critter:hover .info-bubble {
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+      }
+
+      /* 形状变体 */
+      .shape-triangle .body {
+        border-radius: 10px;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        height: 70px;
+        width: 70px;
+      }
+      .shape-triangle .face {
+        margin-top: 20px;
+      }
+
+      .floor-line {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 10px;
+        background-image: linear-gradient(to right, #ddd 50%, transparent 50%);
+        background-size: 40px 100%;
+        opacity: 0.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Anyway.Zoo</h1>
+      <p>名字已经修好啦，不会反着写了！</p>
+    </div>
+    <div id="zoo-container"></div>
+    <div class="floor-line"></div>
+
+    <script>
+      const characters = [
+        { name: "Ethan", type: "INTJ", color: "#957DAD", shape: "circle" },
+        { name: "Mark", type: "ENTJ", color: "#E0BBE4", shape: "square" },
+        { name: "Zoo", type: "INTP", color: "#D291BC", shape: "circle" },
+        { name: "小严", type: "INTJ", color: "#957DAD", shape: "circle" },
+        { name: "V2027", type: "INFJ", color: "#B5EAD7", shape: "circle" },
+        { name: "大象", type: "INFP", color: "#C7CEEA", shape: "circle" },
+        { name: "高兴", type: "ENFJ", color: "#FF9AA2", shape: "triangle" },
+        { name: "Magic", type: "INFP", color: "#C7CEEA", shape: "circle" },
+        { name: "迈薇", type: "ENFJ", color: "#FFB7B2", shape: "square" },
+        { name: "Robin", type: "ISFJ", color: "#E2F0CB", shape: "circle" },
+        { name: "Ryan", type: "ISFJ", color: "#E2F0CB", shape: "circle" },
+        { name: "Esther", type: "ISTJ", color: "#FDFD96", shape: "square" },
+        { name: "W", type: "ESTJ", color: "#FFDAC1", shape: "triangle" },
+        { name: "小丑", type: "ESTP", color: "#FFDAC1", shape: "circle" },
+        { name: "采辰", type: "ESTP", color: "#FFDAC1", shape: "circle" },
+      ];
+
+      const faces = [
+        "• ‿ •",
+        "ovo",
+        ">_<",
+        "¬_¬",
+        "^o^",
+        "UwU",
+        "O_O",
+        "$_$",
+        "=.=",
+        "◕‿◕",
+      ];
+      const container = document.getElementById("zoo-container");
+
+      class Critter {
+        constructor(data) {
+          this.data = data;
+          this.element = null;
+          this.wrapper = null; // 新增：视觉包装层
+
+          this.x = Math.random() * (window.innerWidth - 80);
+          this.y = Math.random() * (window.innerHeight - 150) + 50;
+
+          // 速度和方向
+          this.speed = 0.5 + Math.random() * 1.5;
+          this.dx = (Math.random() - 0.5) * this.speed;
+          this.dy = (Math.random() - 0.5) * this.speed;
+          this.direction = this.dx > 0 ? 1 : -1;
+
+          this.isHovered = false;
+          this.init();
+        }
+
+        init() {
+          this.element = document.createElement("div");
+          this.element.className = "critter walking";
+          if (this.data.shape === "triangle")
+            this.element.classList.add("shape-triangle");
+
+          const randomFace = faces[Math.floor(Math.random() * faces.length)];
+
+          // 结构变更：气泡在外，身体在 visual-wrapper 内
+          this.element.innerHTML = `
+                    <div class="info-bubble">
+                        <span class="name">${this.data.name}</span>
+                        <span class="mbti">${this.data.type}</span>
+                    </div>
+                    <div class="visual-wrapper">
+                        <div class="body" style="background-color: ${this.data.color};">
+                            <div class="face">${randomFace}</div>
+                        </div>
+                        <div class="legs">
+                            <div class="leg"></div>
+                            <div class="leg"></div>
+                        </div>
+                    </div>
+                `;
+
+          container.appendChild(this.element);
+          this.wrapper = this.element.querySelector(".visual-wrapper");
+
+          // 交互
+          this.element.addEventListener("mouseenter", () => {
+            this.isHovered = true;
+          });
+          this.element.addEventListener("mouseleave", () => {
+            this.isHovered = false;
+            this.dx = (Math.random() - 0.5) * 3;
+            this.dy = (Math.random() - 0.5) * 3;
+          });
+        }
+
+        update() {
+          if (this.isHovered) return;
+
+          this.x += this.dx;
+          this.y += this.dy;
+
+          // 碰壁检测
+          if (this.x <= 0 || this.x >= window.innerWidth - 60) {
+            this.dx *= -1;
+          }
+          if (this.y <= 50 || this.y >= window.innerHeight - 80) {
+            this.dy *= -1;
+          }
+
+          // 随机转向
+          if (Math.random() < 0.01) {
+            this.dx = (Math.random() - 0.5) * 2;
+            this.dy = (Math.random() - 0.5) * 2;
+          }
+
+          // 更新位置 (只移动容器)
+          this.element.style.transform = `translate(${this.x}px, ${this.y}px)`;
+
+          // 更新朝向 (只翻转 wrapper)
+          if (this.dx > 0) {
+            // 向右走，添加 class 翻转
+            this.wrapper.classList.add("facing-right");
+          } else {
+            // 向左走，移除 class (默认就是向左)
+            this.wrapper.classList.remove("facing-right");
+          }
+        }
+      }
+
+      // 初始化
+      const population = [...characters, ...characters];
+      const critters = [];
+      population.forEach((data) => critters.push(new Critter(data)));
+
+      function animate() {
+        critters.forEach((c) => c.update());
+        requestAnimationFrame(animate);
+      }
+      animate();
+
+      window.addEventListener("resize", () => {
+        critters.forEach((c) => {
+          if (c.x > window.innerWidth) c.x = window.innerWidth - 100;
+          if (c.y > window.innerHeight) c.y = window.innerHeight - 100;
+        });
+      });
+    </script>
+  </body>
+</html>
