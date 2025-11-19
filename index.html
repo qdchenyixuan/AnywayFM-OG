@@ -19,9 +19,9 @@
         font-family: "Quicksand", "Microsoft YaHei", sans-serif;
         overflow: hidden;
         user-select: none;
-        /* 这是一个可爱的空心圆圈鼠标指针 */
-        cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="%23FF8888" stroke-width="2"/></svg>')
-            12 12,
+        /* 可爱的猫爪鼠标指针 */
+        cursor: url('data:image/svg+xml;utf8,<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="14" cy="18" rx="5" ry="6" fill="%23FFB6C1"/><circle cx="7" cy="10" r="3" fill="%23FFB6C1"/><circle cx="14" cy="8" r="3" fill="%23FFB6C1"/><circle cx="21" cy="10" r="3" fill="%23FFB6C1"/></svg>')
+            14 14,
           auto;
       }
 
@@ -30,8 +30,8 @@
       /* === 核心容器 === */
       .critter {
         position: absolute;
-        width: 60px;
-        height: 60px;
+        width: 40px;
+        height: 40px;
         will-change: transform;
         z-index: 10;
         /* 扩大一点点击区域，更好抓 */
@@ -41,8 +41,8 @@
 
       /* === 视觉包裹层 (负责左右翻转) === */
       .visual-wrapper {
-        width: 60px;
-        height: 60px;
+        width: 40px;
+        height: 40px;
         position: relative;
         transition: transform 0.2s;
         /* 修正 pointer-events 以便父级能捕获hover */
@@ -84,7 +84,7 @@
 
       /* 表情文字 */
       .face {
-        font-size: 16px;
+        font-size: 11px;
         color: rgba(60, 60, 60, 0.7);
         font-weight: bold;
         pointer-events: none;
@@ -179,9 +179,9 @@
         transform: translateX(-50%) scale(1);
         background: rgba(50, 50, 50, 0.9);
         color: #fff;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 12px;
+        padding: 2px 5px;
+        border-radius: 8px;
+        font-size: 6px;
         white-space: nowrap;
         opacity: 1;
         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -206,31 +206,31 @@
       .name-row {
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 2px;
       }
       .name {
         font-weight: 700;
-        font-size: 14px;
+        font-size: 6px;
       }
       .mbti-tag {
-        font-size: 10px;
+        font-size: 5px;
         background: rgba(255, 255, 255, 0.2);
-        padding: 1px 5px;
-        border-radius: 4px;
+        padding: 0px 2px;
+        border-radius: 2px;
       }
 
       /* 形状变体 */
       .shape-triangle .body {
-        border-radius: 15px;
+        border-radius: 10px;
         clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-        height: 65px;
-        width: 70px;
+        height: 44px;
+        width: 47px;
       }
       .shape-triangle .face {
-        margin-top: 15px;
+        margin-top: 10px;
       }
       .shape-square .body {
-        border-radius: 12px;
+        border-radius: 8px;
       }
 
       /* 地面线 */
@@ -277,10 +277,29 @@
 
       let characters = [];
 
-      // 普通状态的表情
-      const normalFaces = ["• ‿ •", "ovo", "¬_¬", "•_•", "^.^", "=.="];
-      // 被抓起来时的表情 (惊讶/害羞)
-      const panicFaces = [">///<", "O_O", "QAQ", ">3<", "⊙﹏⊙", "OwO", "!!"];
+      // 根据性格类型的表情集合
+      const facesByType = {
+        // 内向型 - 更内敛、害羞
+        I: {
+          normal: ["• _ •", "- ◡ -", "˘ ˘", "- . -", "◡‿◡", "- ω -", "˘︶˘"],
+          panic: [">///<", "o///o", ">_<", "⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄", "(*ﾟ▽ﾟ*)", ">//<"],
+        },
+        // 外向型 - 更活泼、开朗
+        E: {
+          normal: ["^▽^", "≧◡≦", "◕‿◕", "ʘ‿ʘ", "★ω★", "✧◡✧", "⌒‿⌒"],
+          panic: ["O_O", "◎ω◎", "ΩДΩ", "!!!", "⊙▽⊙", "☆_☆", "◉_◉"],
+        },
+        // 思考型 - 更冷静、理性
+        T: {
+          normal: ["- _ -", "¬_¬", "•_•", "- .- ", "︶_︶", "ー_ー", "—_—"],
+          panic: ["⊙_⊙", "°_°", "◔_◔", "ಠ_ಠ", "⊙ω⊙", "°Д°"],
+        },
+        // 情感型 - 更温暖、感性
+        F: {
+          normal: ["♡‿♡", "◠‿◠", "uwu", "◡‿◡", "☺‿☺", "^‿^", "◕‿‿◕"],
+          panic: ["QAQ", "TωT", ">3<", "⊙﹏⊙", "(╥﹏╥)", "°^°"],
+        },
+      };
 
       const container = document.getElementById("zoo-container");
 
@@ -291,16 +310,54 @@
           this.wrapper = null;
           this.faceElement = null;
           this.originalFace = "";
+          this.normalFaces = [];
+          this.panicFaces = [];
 
           this.x = Math.random() * (window.innerWidth - 80);
           this.y = Math.random() * (window.innerHeight - 150) + 50;
 
-          this.speed = 0.4 + Math.random() * 1.2; // 速度稍微慢一点，显呆
+          // 根据性格设置速度 - 让差异更明显
+          // EP型（外向+知觉）：最好动，如 ESFP, ESTP, ENFP, ENTP
+          // EJ型（外向+判断）：比较好动
+          // IP型（内向+知觉）：比较安静但偶尔活跃
+          // IJ型（内向+判断）：最不好动，如 INFJ, INTJ, ISFJ, ISTJ
+          let speedMultiplier = 1.0;
+
+          if (data.ie === "E" && data.pj === "P") {
+            speedMultiplier = 2.0; // EP型非常好动
+          } else if (data.ie === "E" && data.pj === "J") {
+            speedMultiplier = 1.4; // EJ型比较好动
+          } else if (data.ie === "I" && data.pj === "P") {
+            speedMultiplier = 0.7; // IP型比较安静
+          } else if (data.ie === "I" && data.pj === "J") {
+            speedMultiplier = 0.3; // IJ型非常安静，几乎不动
+          }
+
+          const baseSpeed = 0.3 + Math.random() * 0.6;
+          this.speed = baseSpeed * speedMultiplier;
+
           this.dx = (Math.random() - 0.5) * this.speed;
           this.dy = (Math.random() - 0.5) * this.speed;
 
           this.isHovered = false;
+          this.setupFaces();
           this.init();
+        }
+
+        setupFaces() {
+          // 根据 I/E 和 T/F 选择表情风格
+          const ieType = this.data.ie;
+          const tfType = this.data.tf;
+
+          // 混合 I/E 和 T/F 的表情
+          this.normalFaces = [
+            ...facesByType[ieType].normal,
+            ...facesByType[tfType].normal,
+          ];
+          this.panicFaces = [
+            ...facesByType[ieType].panic,
+            ...facesByType[tfType].panic,
+          ];
         }
 
         init() {
@@ -312,7 +369,9 @@
             this.element.classList.add("shape-square");
 
           this.originalFace =
-            normalFaces[Math.floor(Math.random() * normalFaces.length)];
+            this.normalFaces[
+              Math.floor(Math.random() * this.normalFaces.length)
+            ];
 
           this.element.innerHTML = `
                     <div class="info-bubble">
@@ -339,9 +398,11 @@
           // === 交互逻辑 ===
           this.element.addEventListener("mouseenter", () => {
             this.isHovered = true;
-            // 1. 随机换一个“惊慌”表情
+            // 1. 随机换一个"惊慌"表情
             const panicFace =
-              panicFaces[Math.floor(Math.random() * panicFaces.length)];
+              this.panicFaces[
+                Math.floor(Math.random() * this.panicFaces.length)
+              ];
             this.faceElement.innerText = panicFace;
           });
 
@@ -351,8 +412,19 @@
             this.faceElement.innerText = this.originalFace;
 
             // 3. 被放下后，换个方向跑 (假装受惊逃跑)
-            this.dx = (Math.random() - 0.5) * 3;
-            this.dy = (Math.random() - 0.5) * 3;
+            // EP型逃得最快，IJ型几乎不逃
+            let escapeSpeed = 1.5;
+            if (this.data.ie === "E" && this.data.pj === "P") {
+              escapeSpeed = 3.5; // EP型：疯狂逃跑
+            } else if (this.data.ie === "E" && this.data.pj === "J") {
+              escapeSpeed = 2.5; // EJ型：快速逃跑
+            } else if (this.data.ie === "I" && this.data.pj === "P") {
+              escapeSpeed = 1.5; // IP型：温和逃跑
+            } else if (this.data.ie === "I" && this.data.pj === "J") {
+              escapeSpeed = 0.8; // IJ型：淡定离开
+            }
+            this.dx = (Math.random() - 0.5) * escapeSpeed;
+            this.dy = (Math.random() - 0.5) * escapeSpeed;
           });
         }
 
@@ -370,10 +442,22 @@
             this.dy *= -1;
           }
 
-          // 偶尔发呆转向
-          if (Math.random() < 0.005) {
-            this.dx = (Math.random() - 0.5) * 1.5;
-            this.dy = (Math.random() - 0.5) * 1.5;
+          // 偶尔发呆转向 - 让好动的性格更活跃
+          // EP型转向最频繁，IJ型几乎不转向
+          let turnFrequency = 0.005; // 默认
+          if (this.data.ie === "E" && this.data.pj === "P") {
+            turnFrequency = 0.015; // EP型：频繁转向，活泼好动
+          } else if (this.data.ie === "E" && this.data.pj === "J") {
+            turnFrequency = 0.008; // EJ型：适度转向
+          } else if (this.data.ie === "I" && this.data.pj === "P") {
+            turnFrequency = 0.004; // IP型：偶尔转向
+          } else if (this.data.ie === "I" && this.data.pj === "J") {
+            turnFrequency = 0.001; // IJ型：极少转向，稳如泰山
+          }
+
+          if (Math.random() < turnFrequency) {
+            this.dx = (Math.random() - 0.5) * this.speed * 1.5;
+            this.dy = (Math.random() - 0.5) * this.speed * 1.5;
           }
 
           // 移动
@@ -412,6 +496,10 @@
               type: mbtiType,
               color: style.color,
               shape: style.shape,
+              ie: person.ie.toUpperCase(), // I 或 E
+              ns: person.ns.toUpperCase(), // N 或 S
+              tf: person.tf.toUpperCase(), // T 或 F
+              pj: person.pj.toUpperCase(), // P 或 J
             };
           });
 
